@@ -10,12 +10,17 @@
 #define LCD_D6_GPO  8
 #define LCD_D7_GPO  7
 #define LCD_BL_GPO  6
+
+#define BUZZER_GPO  13
 //--------------- Define Pins ---------------
 
 
 //============= Program scheduler ===========
 #define LCD_TASK_MS 20
 volatile unsigned long lcd_task_last_exec = 0;
+
+#define BUZZER_TASK_MS  1
+volatile unsigned long buzzer_task_last_exec = 0;
 //------------- Program scheduler -----------
 
 
@@ -33,15 +38,44 @@ void lcd_init()
 
 void lcd_task()
 {
-  
+
 }
 //------------------- LCD -------------------
+
+
+//================= BUZZER ==================
+#define BUZZER_ON   LOW
+#define BUZZER_OFF  HIGH
+
+volatile unsigned int set_buzzer_ms = 0;
+
+void buzzer_init()
+{
+  pinMode(BUZZER_GPO, OUTPUT);
+  digitalWrite(BUZZER_GPO, BUZZER_OFF);
+  set_buzzer_ms = 500; //activate buzzer for 500ms.
+}
+
+void buzzer_task()
+{
+  if(set_buzzer_ms > 0)
+  {
+    digitalWrite(BUZZER_GPO, BUZZER_ON);
+    set_buzzer_ms--;
+  }
+  else
+  {
+    digitalWrite(BUZZER_GPO, BUZZER_OFF);
+  }
+}
+//----------------- BUZZER ------------------
 
 
 //Start the program
 void setup()
 {
-  lcd_init(); //Init the lcd and backLight
+  buzzer_init();  //Init buzzer
+  lcd_init();     //Init the lcd and backLight
 }
 
 void loop()
@@ -50,5 +84,11 @@ void loop()
   {
     lcd_task_last_exec = millis();
     lcd_task();
+  }
+
+  if(millis() - buzzer_task_last_exec >= BUZZER_TASK_MS)
+  {
+    buzzer_task_last_exec = millis();
+    buzzer_task();
   }
 }
