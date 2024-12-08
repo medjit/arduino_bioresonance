@@ -15,6 +15,9 @@
 #define ENCODER_PIN_A  2
 #define ENCODER_PIN_B  4
 #define ENCODER_BTN_PIN  5
+
+// Buzzer Pin
+#define BUZZER_PIN  13
 //--------------- Define Pins ---------------
 
 
@@ -24,6 +27,9 @@ volatile unsigned long lcd_task_last_exec = 0;
 
 #define ENCODER_TASK_MS 1
 volatile unsigned long encoder_task_last_exec = 0;
+
+#define BUZZER_TASK_MS 1
+volatile unsigned long buzzer_task_last_exec = 0;
 //------------- Program scheduler -----------
 
 
@@ -227,6 +233,7 @@ void lcd_task()
 Encoder encoder(ENCODER_PIN_A, ENCODER_PIN_B);
 
 void handleEncoder(int positionDifference, bool buttonPressed) {
+    setBuzzer(30);
     Serial.print("Position difference: ");
     Serial.println(positionDifference);
     Serial.print("Button state: ");
@@ -274,11 +281,37 @@ void encoder_task()
 }
 //------------- Encoder Functions ------------
 
+//============= Buzzer Functions =============
+unsigned long buzzerDuration = 0;
+unsigned long buzzerStartTime = 0;
+bool buzzerActive = false;
+
+void buzzer_init() {
+    pinMode(BUZZER_PIN, OUTPUT);
+    digitalWrite(BUZZER_PIN, HIGH);
+}
+
+void setBuzzer(unsigned int duration) {
+    buzzerDuration = duration;
+    buzzerStartTime = millis();
+    buzzerActive = true;
+    digitalWrite(BUZZER_PIN, LOW);
+}
+
+void buzzer_task() {
+    if (buzzerActive && (millis() - buzzerStartTime >= buzzerDuration)) {
+        digitalWrite(BUZZER_PIN, HIGH);
+        buzzerActive = false;
+    }
+}
+//------------- Buzzer Functions -------------
+
 void setup()
 {
     Serial.begin(9600);
     lcd_init();     //Init the lcd and backLight
     encoder_init(); // Init the encoder
+    buzzer_init();  // Init the buzzer
 }
 
 void loop()
@@ -292,5 +325,10 @@ void loop()
     if (millis() - encoder_task_last_exec >= ENCODER_TASK_MS) {
         encoder_task_last_exec = millis();
         encoder_task();
+    }
+
+    if (millis() - buzzer_task_last_exec >= BUZZER_TASK_MS) {
+        buzzer_task_last_exec = millis();
+        buzzer_task();
     }
 }
