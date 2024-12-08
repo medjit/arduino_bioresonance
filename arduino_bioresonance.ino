@@ -297,6 +297,7 @@ void lcd_task()
 //--------------- LCD Functions --------------
 
 //============= Resonans Generation ==========
+unsigned long programStartTime = 0;
 unsigned long resonansStartTime = 0;
 unsigned long resonansDuration = 0;
 bool resonansActive = false;
@@ -312,6 +313,7 @@ void playDisease(int diseaseNumber) {
     diseaseIndex = diseaseNumber;
     if (diseaseIndex >= 0 && diseaseIndex < deseases_count) {
         resonansStartTime = millis();
+        programStartTime = millis();
         resonansDuration = diseases[diseaseIndex].sub_index * 60000;
         resonansActive = true;
         currentFrequencyIndex = 0;
@@ -329,7 +331,7 @@ void stopDisease() {
 
 unsigned long getRemainingTime() {
     if (resonansActive) {
-        unsigned long elapsedTime = millis() - resonansStartTime;
+        unsigned long elapsedTime = millis() - programStartTime;
         unsigned long remainingTime = resonansDuration - elapsedTime;
         return remainingTime / 1000; // Return remaining time in seconds
     }
@@ -339,13 +341,17 @@ unsigned long getRemainingTime() {
 void resonans_task() {
     if (resonansActive) {
         unsigned long elapsedTime = millis() - resonansStartTime;
-        if (elapsedTime >= resonansDuration) {
-            currentFrequencyIndex++;
+
+        // Each frequency runs for 1 minute (60000 ms)
+        if (elapsedTime >= 60000) {
+            resonansStartTime = millis(); // Reset the start time
+            currentFrequencyIndex++;     // Move to the next frequency
+            
             if (currentFrequencyIndex < diseases[diseaseIndex].sub_index) {
-                resonansStartTime = millis();
-                resonansDuration = diseases[diseaseIndex].sub_index * 60000;
+                // Play the next frequency
                 tone(RESONANS_PIN, diseases[diseaseIndex].numbers[currentFrequencyIndex]);
             } else {
+                // Stop the program when all frequencies are played
                 stopDisease();
                 lcd_line1 = "Select disease: ";
                 setBacklightMode(ON);
@@ -475,6 +481,7 @@ bool buzzerActive = false;
 void buzzer_init() {
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, HIGH);
+    setBuzzer(500);
 }
 
 void setBuzzer(unsigned int duration) {
