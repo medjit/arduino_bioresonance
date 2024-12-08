@@ -1,4 +1,5 @@
 #include <LiquidCrystal.h>
+#include <Encoder.h>
 
 //=============== Define Pins ===============
 // LCD Pins
@@ -10,6 +11,10 @@
 #define LCD_D7_GPO  7
 #define LCD_BL_GPO  6
 
+// Encoder Pins
+#define ENCODER_PIN_A  2
+#define ENCODER_PIN_B  4
+#define ENCODER_BTN_PIN  5
 //--------------- Define Pins ---------------
 
 
@@ -17,6 +22,8 @@
 #define LCD_TASK_MS 20
 volatile unsigned long lcd_task_last_exec = 0;
 
+#define ENCODER_TASK_MS 1
+volatile unsigned long encoder_task_last_exec = 0;
 //------------- Program scheduler -----------
 
 
@@ -215,10 +222,63 @@ void lcd_task()
 }
 //--------------- LCD Functions --------------
 
+//============= Encoder Functions ============
+// Define Encoder object
+Encoder encoder(ENCODER_PIN_A, ENCODER_PIN_B);
+
+void handleEncoder(int positionDifference, bool buttonPressed) {
+    Serial.print("Position difference: ");
+    Serial.println(positionDifference);
+    Serial.print("Button state: ");
+    Serial.println(buttonPressed ? "Pressed" : "Released");
+}
+
+void encoder_init() {
+    pinMode(ENCODER_BTN_PIN, INPUT_PULLUP);
+    encoder.write(0);
+}
+
+void encoder_task()
+{
+    static int lastPosition = -1; // Stores the last encoder position
+    static bool lastButtonState = HIGH; // Tracks the last button state
+    static bool buttonPressedHandled = false; // Ensures button is handled only once per press
+    static unsigned long lastDebounceTime = 0; // Tracks debounce timing
+    const unsigned long debounceDelay = 50; // Debounce delay in milliseconds
+
+    // Read encoder position and button state
+    int newPosition = encoder.read() / 4; // Adjust for one click per detent
+    bool buttonState = digitalRead(ENCODER_BTN_PIN);
+
+    // Handle encoder rotation
+    if (newPosition != lastPosition) {
+        handleEncoder(newPosition - lastPosition, false);
+        lastPosition = newPosition;
+    }
+
+    // Handle button press with debounce
+    if (buttonState != lastButtonState) {
+        lastDebounceTime = millis();
+    }
+
+    if ((millis() - lastDebounceTime) > debounceDelay) {
+        if (buttonState == LOW && !buttonPressedHandled) {
+            handleEncoder(0, true);
+            buttonPressedHandled = true;
+        } else if (buttonState == HIGH) {
+            buttonPressedHandled = false;
+        }
+    }
+
+    lastButtonState = buttonState;
+}
+//------------- Encoder Functions ------------
 
 void setup()
 {
+    Serial.begin(9600);
     lcd_init();     //Init the lcd and backLight
+    encoder_init(); // Init the encoder
 }
 
 void loop()
@@ -227,5 +287,10 @@ void loop()
     {
         lcd_task_last_exec = millis();
         lcd_task();
+    }
+
+    if (millis() - encoder_task_last_exec >= ENCODER_TASK_MS) {
+        encoder_task_last_exec = millis();
+        encoder_task();
     }
 }
