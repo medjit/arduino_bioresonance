@@ -327,6 +327,7 @@ void stopDisease() {
     noTone(RESONANS_PIN);
     digitalWrite(RESONANS_PIN, LOW);
     setBuzzer(1500);
+    set_is_playing(false);
 }
 
 unsigned long getRemainingTime() {
@@ -366,6 +367,10 @@ void resonans_task() {
 //============= Menu Functions ===============
 bool is_playing = 0;
 int deseaseindex = 0;
+
+void set_is_playing(bool value) {
+    is_playing = value;
+}
 
 String displayDisease(int index) {
     if (index >= 0 && index < deseases_count) {
