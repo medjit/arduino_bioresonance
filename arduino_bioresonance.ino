@@ -32,6 +32,50 @@ volatile unsigned long encoder_task_last_exec = 0;
 volatile unsigned long buzzer_task_last_exec = 0;
 //------------- Program scheduler -----------
 
+//============= Deseases Definitions ========
+// Define a struct to hold the disease name and associated freq
+struct Disease {
+    const char* name;
+    unsigned int numbers[10]; // Adjust size to maximum non-zero freq in any disease
+    byte sub_index;       // Count of valid numbers/minutes
+};
+
+const int deseases_count = 31; // Number of diseases
+Disease diseases[deseases_count] = {
+  {"Alcoholism",              {10000},                                                       1},
+  {"Angina",                  {787, 776, 727, 690, 465, 428, 660},                           7},
+  {"Stomachache",             {10000, 3000, 95},                                             3},
+  {"Pain in general",         {3000, 2720, 95, 666, 80, 40},                                 6},
+  {"Headaches",               {10000, 144, 160, 520, 304},                                   5},
+  {"Infection",               {3000, 95, 880, 1550, 802, 787, 776, 727},                     8},
+  {"Acute pain",              {3000, 95, 10000, 1550, 802, 880, 787, 727, 690, 666},        10},
+  {"Back pain 2",             {787, 784, 776, 728, 727, 465, 432},                           7},
+  {"Arthralgia",              {160, 500, 1600, 5000, 324, 528},                              6},
+  {"Toothache",               {5170, 3000, 2720, 2489, 1800, 1600, 1550, 880, 832, 666},    10},
+  {"No appetite",             {10000, 465, 444, 1865, 125, 95, 72, 880, 787, 727},          10},
+  {"No taste",                {10000, 20},                                                   2},
+  {"Motion sickness",         {10000, 5000, 648, 624, 600, 465, 440, 648, 444, 1865},       10},
+  {"Hoarseness",              {880, 760, 727},                                               3},
+  {"Dolegl. gastric",         {10000, 1550, 802, 880, 832, 787, 727, 465},                   8},
+  {"Prostate ailments",       {2050, 880, 1550, 802, 787, 727, 465, 20},                     8},
+  {"Deafness",                {10000, 1550, 880, 802, 787, 727, 20},                         7},
+  {"Flu",                     {954, 889, 841, 787, 763, 753, 742, 523, 513, 482},           10},
+  {"Hemorrhoids",             {4474, 6117, 774, 1550, 447, 880, 802, 727},                   8},
+  {"Kidney stones",           {10000, 444, 727, 787, 880, 6000, 3000, 1552},                 8},
+  {"Cough",                   {7760, 7344, 3702, 3672, 1550, 1500, 1234, 776, 766, 728},    10},
+  {"Runny nose",              {1800, 1713, 1550, 802, 800, 880, 787, 727, 444, 20},         10},
+  {"Hair loss",               {10000, 5000, 2720, 2170, 1552, 880, 800, 787, 727, 465},     10},
+  {"Hypertension",            {10000, 3176, 2112, 95, 324, 528, 880, 787, 727, 304},        10},
+  {"Low pressure",            {727, 787, 880},                                               3},
+  {"Disease. thyroid gland",  {16000, 10000, 160, 80, 35},                                   5},
+  {"Bad breath",              {1550, 802, 880, 787, 727},                                    5},
+  {"General herpes",          {2950, 1900, 1577, 1550, 1489, 1488, 629, 464, 450, 383},     10},
+  {"Epilepsy",                {10000, 880, 802, 787, 727, 700, 650, 600, 210, 125},         10},
+  {"Constipation",            {3176, 1550, 880, 832, 802, 787, 776, 727, 444, 422},         10},
+  {"Dizziness",               {1550, 880, 802, 784, 787, 786, 766, 522, 727, 72},           10},
+};
+//------------- Deseases Definitions --------
+
 
 //=============== LCD Functions ==============
 // Default values
