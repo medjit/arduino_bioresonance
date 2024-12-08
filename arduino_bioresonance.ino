@@ -42,7 +42,6 @@ struct Disease {
 
 const int deseases_count = 31; // Number of diseases
 Disease diseases[deseases_count] = {
-  {"Alcoholism",              {10000},                                                       1},
   {"Angina",                  {787, 776, 727, 690, 465, 428, 660},                           7},
   {"Stomachache",             {10000, 3000, 95},                                             3},
   {"Pain in general",         {3000, 2720, 95, 666, 80, 40},                                 6},
@@ -73,6 +72,7 @@ Disease diseases[deseases_count] = {
   {"Epilepsy",                {10000, 880, 802, 787, 727, 700, 650, 600, 210, 125},         10},
   {"Constipation",            {3176, 1550, 880, 832, 802, 787, 776, 727, 444, 422},         10},
   {"Dizziness",               {1550, 880, 802, 784, 787, 786, 766, 522, 727, 72},           10},
+  {"Alcoholism",              {10000},                                                       1},
 };
 //------------- Deseases Definitions --------
 
@@ -272,16 +272,60 @@ void lcd_task()
 }
 //--------------- LCD Functions --------------
 
+//============= Menu Functions ===============
+bool is_playing = 0;
+int deseaseindex = 0;
+
+String displayDisease(int index) {
+    if (index >= 0 && index < deseases_count) {
+        String diseaseName = diseases[index].name;
+        while (diseaseName.length() < 16) {
+            diseaseName += ' ';
+        }
+        return diseaseName;
+    } else {
+        return "Invalid index";
+    }
+}
+void menu_init() {
+    lcd_line1 = "Select disease: ";
+    lcd_line2 = displayDisease(deseaseindex);
+}
+
+
+void handleMenu(int positionDifference, bool buttonPressed) {
+    if (positionDifference != 0) {
+        deseaseindex += positionDifference;
+        if (deseaseindex < 0) {
+            deseaseindex = 0;
+        } else if (deseaseindex >= deseases_count) {
+            deseaseindex = deseases_count - 1;
+        }
+        lcd_line2 = displayDisease(deseaseindex);
+    }
+
+    if (buttonPressed) {
+        is_playing = !is_playing;
+        if (is_playing) {
+            lcd_line1 = "Playing: ";
+            setBacklightMode(BREATHING);
+        } else {
+            lcd_line1 = "Select disease: ";
+            setBacklightMode(ON);
+        }
+        lcd_line2 = displayDisease(deseaseindex);
+    }
+}
+
+//------------- Menu Functions ---------------
+
 //============= Encoder Functions ============
 // Define Encoder object
 Encoder encoder(ENCODER_PIN_A, ENCODER_PIN_B);
 
 void handleEncoder(int positionDifference, bool buttonPressed) {
     setBuzzer(30);
-    Serial.print("Position difference: ");
-    Serial.println(positionDifference);
-    Serial.print("Button state: ");
-    Serial.println(buttonPressed ? "Pressed" : "Released");
+    handleMenu(positionDifference, buttonPressed);
 }
 
 void encoder_init() {
@@ -291,7 +335,7 @@ void encoder_init() {
 
 void encoder_task()
 {
-    static int lastPosition = -1; // Stores the last encoder position
+    static int lastPosition = 0; // Stores the last encoder position
     static bool lastButtonState = HIGH; // Tracks the last button state
     static bool buttonPressedHandled = false; // Ensures button is handled only once per press
     static unsigned long lastDebounceTime = 0; // Tracks debounce timing
@@ -356,6 +400,7 @@ void setup()
     lcd_init();     //Init the lcd and backLight
     encoder_init(); // Init the encoder
     buzzer_init();  // Init the buzzer
+    menu_init();    // Init the menu
 }
 
 void loop()
