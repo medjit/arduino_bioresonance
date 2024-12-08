@@ -18,6 +18,9 @@
 
 // Buzzer Pin
 #define BUZZER_PIN  13
+
+// Resonans Pin
+#define RESONANS_PIN  3
 //--------------- Define Pins ---------------
 
 
@@ -30,6 +33,9 @@ volatile unsigned long encoder_task_last_exec = 0;
 
 #define BUZZER_TASK_MS 1
 volatile unsigned long buzzer_task_last_exec = 0;
+
+#define RESONANS_TASK_MS 1
+volatile unsigned long resonans_task_last_exec = 0;
 //------------- Program scheduler -----------
 
 //============= Deseases Definitions ========
@@ -229,6 +235,11 @@ void lcd_task()
 
     unsigned long currentMillis = millis();
 
+    //workaround
+    if (lcd_line1.startsWith("Playing: ")) {
+        lcd_line1 = "Playing: " + String(convertToMMSS(getRemainingTime())) + "  ";
+    }
+
     // Update line 1
     if (lcd_line1.length() > 16) {
         if (currentMillis - lastScrollTime1 >= (pause1 ? pauseDuration : scrollSpeed)) {
@@ -285,6 +296,67 @@ void lcd_task()
 }
 //--------------- LCD Functions --------------
 
+//============= Resonans Generation ==========
+unsigned long resonansStartTime = 0;
+unsigned long resonansDuration = 0;
+bool resonansActive = false;
+int currentFrequencyIndex = 0;
+int diseaseIndex = 0;
+
+void resonans_init() {
+    pinMode(RESONANS_PIN, OUTPUT);
+    digitalWrite(RESONANS_PIN, LOW);
+}
+
+void playDisease(int diseaseNumber) {
+    diseaseIndex = diseaseNumber;
+    if (diseaseIndex >= 0 && diseaseIndex < deseases_count) {
+        resonansStartTime = millis();
+        resonansDuration = diseases[diseaseIndex].sub_index * 60000;
+        resonansActive = true;
+        currentFrequencyIndex = 0;
+        tone(RESONANS_PIN, diseases[diseaseIndex].numbers[currentFrequencyIndex]);
+        setBuzzer(1000);
+    }
+}
+
+void stopDisease() {
+    resonansActive = false;
+    noTone(RESONANS_PIN);
+    digitalWrite(RESONANS_PIN, LOW);
+    setBuzzer(1500);
+}
+
+unsigned long getRemainingTime() {
+    if (resonansActive) {
+        unsigned long elapsedTime = millis() - resonansStartTime;
+        unsigned long remainingTime = resonansDuration - elapsedTime;
+        return remainingTime / 1000; // Return remaining time in seconds
+    }
+    return 0;
+}
+
+void resonans_task() {
+    if (resonansActive) {
+        unsigned long elapsedTime = millis() - resonansStartTime;
+        if (elapsedTime >= resonansDuration) {
+            currentFrequencyIndex++;
+            if (currentFrequencyIndex < diseases[diseaseIndex].sub_index) {
+                resonansStartTime = millis();
+                resonansDuration = diseases[diseaseIndex].sub_index * 60000;
+                tone(RESONANS_PIN, diseases[diseaseIndex].numbers[currentFrequencyIndex]);
+            } else {
+                stopDisease();
+                lcd_line1 = "Select disease: ";
+                setBacklightMode(ON);
+            }
+        }
+    }
+}
+
+//------------- Resonans Generation ----------
+
+
 //============= Menu Functions ===============
 bool is_playing = 0;
 int deseaseindex = 0;
@@ -305,9 +377,20 @@ void menu_init() {
     lcd_line2 = displayDisease(deseaseindex);
 }
 
+String convertToMMSS(unsigned long seconds) {
+    unsigned long minutes = seconds / 60;
+    unsigned long remainingSeconds = seconds % 60;
+    String mm = String(minutes);
+    String ss = remainingSeconds < 10 ? "0" + String(remainingSeconds) : String(remainingSeconds);
+    if (minutes < 10) {
+        mm = "0" + mm;
+    }
+    return mm + ":" + ss;
+}
+
 
 void handleMenu(int positionDifference, bool buttonPressed) {
-    if (positionDifference != 0) {
+    if (positionDifference != 0 && !is_playing) {
         deseaseindex += positionDifference;
         if (deseaseindex < 0) {
             deseaseindex = 0;
@@ -320,9 +403,11 @@ void handleMenu(int positionDifference, bool buttonPressed) {
     if (buttonPressed) {
         is_playing = !is_playing;
         if (is_playing) {
+            playDisease(deseaseindex);
             lcd_line1 = "Playing: ";
             setBacklightMode(BREATHING);
         } else {
+            stopDisease();
             lcd_line1 = "Select disease: ";
             setBacklightMode(ON);
         }
@@ -414,6 +499,7 @@ void setup()
     encoder_init(); // Init the encoder
     buzzer_init();  // Init the buzzer
     menu_init();    // Init the menu
+    resonans_init(); // Init the resonans
 }
 
 void loop()
@@ -432,5 +518,10 @@ void loop()
     if (millis() - buzzer_task_last_exec >= BUZZER_TASK_MS) {
         buzzer_task_last_exec = millis();
         buzzer_task();
+    }
+
+    if (millis() - resonans_task_last_exec >= RESONANS_TASK_MS) {
+        resonans_task_last_exec = millis();
+        resonans_task();
     }
 }
