@@ -133,6 +133,7 @@ void setGradualitySpeed(unsigned long speed) {
 }
 
 void backlight_loop(BacklightMode mode) {
+    static BacklightMode lastMode = OFF;  // Track the previous mode
     static unsigned long lastUpdate = 0;
     static bool blinkState = false;
     static int brightness = 0;
@@ -140,6 +141,38 @@ void backlight_loop(BacklightMode mode) {
 
     unsigned long currentMillis = millis();
 
+    // Reset state on mode change
+    if (mode != lastMode) {
+        lastMode = mode;
+        blinkState = false;
+        fadeAmount = 5;
+
+        // Reset brightness based on the new mode
+        switch (mode) {
+            case ON:
+                brightness = 255; // Set to maximum brightness
+                analogWrite(LCD_BL_GPO, brightness);
+                return;
+
+            case OFF:
+                brightness = 0; // Set to minimum brightness
+                analogWrite(LCD_BL_GPO, brightness);
+                return;
+
+            case BREATHING:
+                brightness = 70; // Start at minimum breathing brightness
+                fadeAmount = 5;  // Ensure proper fade
+                break;
+
+            case BLINK:
+                blinkState = true;
+                analogWrite(LCD_BL_GPO, 255);
+                lastUpdate = currentMillis; // Reset blink timer
+                break;
+        }
+    }
+
+    // Handle behavior for the current mode
     switch (mode) {
         case BREATHING:
             if (currentMillis - lastUpdate >= gradualitySpeed) {
@@ -150,28 +183,6 @@ void backlight_loop(BacklightMode mode) {
                 }
                 brightness = constrain(brightness, 70, 255);
                 analogWrite(LCD_BL_GPO, brightness);
-            }
-            break;
-
-        case ON:
-            if (currentMillis - lastUpdate >= gradualitySpeed) {
-                lastUpdate = currentMillis;
-                if (brightness < 255) {
-                    brightness += fadeAmount;
-                    brightness = constrain(brightness, 0, 255);
-                    analogWrite(LCD_BL_GPO, brightness);
-                }
-            }
-            break;
-
-        case OFF:
-            if (currentMillis - lastUpdate >= gradualitySpeed) {
-                lastUpdate = currentMillis;
-                if (brightness > 0) {
-                    brightness -= fadeAmount;
-                    brightness = constrain(brightness, 0, 255);
-                    analogWrite(LCD_BL_GPO, brightness);
-                }
             }
             break;
 
@@ -186,6 +197,8 @@ void backlight_loop(BacklightMode mode) {
                 analogWrite(LCD_BL_GPO, 255);
             }
             break;
+
+        // ON and OFF are handled in the reset state logic above
     }
 }
 
